@@ -5,8 +5,8 @@ from typing import List
 from app.application.services.user_service import UserService
 from app.infrastructure.database.base import get_db
 from app.infrastructure.repositories.user_repository_impl import UserRepositoryImpl
-from app.presentation.dto.user_dto import UserCreate, UserUpdate, UserResponse
-from app.shared.exceptions import UserNotFoundError, UserAlreadyExistsError
+from app.presentation.dto.user_dto import UserUpdate, UserResponse
+from app.shared.exceptions import UserNotFoundError
 
 router = APIRouter()
 
@@ -44,24 +44,7 @@ async def get_user(
         )
 
 
-@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def create_user(
-    user: UserCreate, 
-    user_service: UserService = Depends(get_user_service)
-):
-    """Create new user"""
-    try:
-        created_user = await user_service.create_user(
-            email=user.email,
-            username=user.username,
-            password=user.password
-        )
-        return UserResponse.model_validate(created_user)
-    except UserAlreadyExistsError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+# POST / エンドポイントを削除（認証用の /auth/register を使用）
 
 
 @router.put("/{user_id}", response_model=UserResponse)
@@ -72,8 +55,7 @@ async def update_user(
 ):
     """Update user"""
     try:
-        update_data = user.model_dump(exclude_unset=True)
-        updated_user = await user_service.update_user(user_id, **update_data)
+        updated_user = await user_service.update_user(user_id, **user.model_dump(exclude_unset=True))
         return UserResponse.model_validate(updated_user)
     except UserNotFoundError as e:
         raise HTTPException(
@@ -97,22 +79,6 @@ async def delete_user(
         )
 
 
-@router.post("/{user_id}/deactivate", response_model=UserResponse)
-async def deactivate_user(
-    user_id: int, 
-    user_service: UserService = Depends(get_user_service)
-):
-    """Deactivate user"""
-    try:
-        user = await user_service.deactivate_user(user_id)
-        return UserResponse.model_validate(user)
-    except UserNotFoundError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        )
-
-
 @router.post("/{user_id}/activate", response_model=UserResponse)
 async def activate_user(
     user_id: int, 
@@ -120,8 +86,24 @@ async def activate_user(
 ):
     """Activate user"""
     try:
-        user = await user_service.activate_user(user_id)
-        return UserResponse.model_validate(user)
+        activated_user = await user_service.activate_user(user_id)
+        return UserResponse.model_validate(activated_user)
+    except UserNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+
+
+@router.post("/{user_id}/deactivate", response_model=UserResponse)
+async def deactivate_user(
+    user_id: int, 
+    user_service: UserService = Depends(get_user_service)
+):
+    """Deactivate user"""
+    try:
+        deactivated_user = await user_service.deactivate_user(user_id)
+        return UserResponse.model_validate(deactivated_user)
     except UserNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
